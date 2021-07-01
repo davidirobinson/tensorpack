@@ -195,7 +195,8 @@ def resnet_fpn_backbone(image, num_blocks):
     freeze_at = cfg.BACKBONE.FREEZE_AT
     shape2d = tf.shape(image)[2:]
     mult = float(cfg.FPN.RESOLUTION_REQUIREMENT)
-    new_shape2d = tf.cast(tf.math.ceil(tf.cast(shape2d, tf.float32) / mult) * mult, tf.int32)
+    # NOTE: Removed ceil function as not supported by xilinx vitis, must ensure image dims are multiples of 32!
+    new_shape2d = tf.cast((tf.cast(shape2d, tf.float32) / mult) * mult, tf.int32)
     pad_shape2d = new_shape2d - shape2d
     assert len(num_blocks) == 4, num_blocks
     with backbone_scope(freeze=freeze_at > 0):

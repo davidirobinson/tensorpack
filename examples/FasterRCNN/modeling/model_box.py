@@ -165,7 +165,11 @@ def roi_align(featuremap, boxes, resolution):
         avgpool = tf.nn.avg_pool2d
     except AttributeError:
         avgpool = tf.nn.avg_pool
-    ret = avgpool(ret, [1, 1, 2, 2], [1, 1, 2, 2], padding='SAME', data_format='NCHW')
+
+    ret = tf.transpose(ret, [0, 2, 3, 1]) # NCHW to NHWC
+    ret = avgpool(ret, [1, 2, 2, 1], [1, 2, 2, 1], padding='SAME', data_format='NHWC')
+    ret = tf.transpose(ret, [0, 3, 1, 2]) # NHWC to NCHW
+
     return ret
 
 
@@ -186,12 +190,16 @@ class RPNAnchors(namedtuple('_RPNAnchors', ['boxes', 'gt_labels', 'gt_boxes'])):
         """
         Slice anchors to the spatial size of this featuremap.
         """
+        gt_labels_shape = tf.shape(self.gt_labels)
+        gt_boxes_shape = tf.shape(self.gt_boxes)
         shape2d = tf.shape(featuremap)[2:]  # h,w
-        slice3d = tf.concat([shape2d, [-1]], axis=0)
-        slice4d = tf.concat([shape2d, [-1, -1]], axis=0)
-        boxes = tf.slice(self.boxes, [0, 0, 0, 0], slice4d)
-        gt_labels = tf.slice(self.gt_labels, [0, 0, 0], slice3d)
-        gt_boxes = tf.slice(self.gt_boxes, [0, 0, 0, 0], slice4d)
+
+        boxesslice4d = tf.concat([shape2d, [gt_boxes_shape[2], gt_boxes_shape[3]]], axis=0)
+        labelsslice3d = tf.concat([shape2d, [gt_labels_shape[2]]], axis=0)
+        boxes = tf.strided_slice(self.boxes, [0, 0, 0, 0], boxesslice4d, [1,1,1,1])
+        gt_labels = tf.strided_slice(self.gt_labels, [0, 0, 0], labelsslice3d, [1,1,1])
+        gt_boxes = tf.strided_slice(self.gt_boxes, [0, 0, 0, 0], boxesslice4d, [1,1,1,1])
+
         return RPNAnchors(boxes, gt_labels, gt_boxes)
 
 

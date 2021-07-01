@@ -193,11 +193,12 @@ def fastrcnn_predictions(boxes, scores):
     boxes = tf.transpose(boxes, [1, 0, 2])[1:, :, :]  # #catxnx4
     scores = tf.transpose(scores[:, 1:], [1, 0])  # #catxn
 
+
     max_coord = tf.reduce_max(boxes)
     filtered_ids = tf.where(scores > cfg.TEST.RESULT_SCORE_THRESH)  # Fx2
     filtered_boxes = tf.gather_nd(boxes, filtered_ids)  # Fx4
     filtered_scores = tf.gather_nd(scores, filtered_ids)  # F,
-    cls_per_box = tf.slice(filtered_ids, [0, 0], [-1, 1])
+    cls_per_box = tf.strided_slice(filtered_ids, [0, 0], [-1, 1])
     offsets = tf.cast(cls_per_box, tf.float32) * (max_coord + 1)  # F,1
     nms_boxes = filtered_boxes + offsets
     selection = tf.image.non_max_suppression(
@@ -337,8 +338,9 @@ class FastRCNNHead(object):
     @memoized_method
     def decoded_output_boxes(self):
         """ Returns: N x #class x 4 """
-        anchors = tf.tile(tf.expand_dims(self.proposals.boxes, 1),
-                          [1, self._num_classes, 1])   # N x #class x 4
+        curr_shape = tf.shape(self.proposals.boxes)
+        expanded_boxes = tf.reshape(self.proposals.boxes, [curr_shape[0], 1, curr_shape[1]])
+        anchors = tf.tile(expanded_boxes,[1, self._num_classes, 1])  # N x #class x 4
         decoded_boxes = decode_bbox_target(
             self.box_logits / self.bbox_regression_weights,
             anchors

@@ -25,7 +25,6 @@ from .model_rpn import generate_rpn_proposals, rpn_head, rpn_losses
 
 class GeneralizedRCNN(ModelDesc):
     def preprocess(self, image):
-        image = tf.expand_dims(image, 0)
         image = image_preprocess(image, bgr=True)
         return tf.transpose(image, [0, 3, 1, 2])
 
@@ -200,7 +199,7 @@ class ResNetFPNModel(GeneralizedRCNN):
 
     def inputs(self):
         ret = [
-            tf.TensorSpec((None, None, 3), tf.float32, 'image')]
+            tf.TensorSpec((1, 320, 480, 3), tf.float32, 'image')]
         num_anchors = len(cfg.RPN.ANCHOR_RATIOS)
         for k in range(len(cfg.FPN.ANCHOR_STRIDES)):
             ret.extend([
